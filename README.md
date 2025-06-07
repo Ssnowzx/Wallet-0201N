@@ -1,73 +1,170 @@
-# Welcome to your Lovable project
 
-## Project info
+# CC Wallet - Simulador 0201N Tangle (DAG)
 
-**URL**: https://lovable.dev/projects/8ca6af08-1017-46e6-9d8c-6138a3237ade
+## Visão Geral
 
-## How can I edit this code?
+CC Wallet é uma aplicação web que simula o funcionamento de uma rede blockchain baseada no conceito Tangle (DAG - Directed Acyclic Graph), similar ao protocolo IOTA, mas usando tokens "0201N".
 
-There are several ways of editing your application.
+## Tecnologias Utilizadas
 
-**Use Lovable**
+- **Frontend:** React 18 + TypeScript
+- **Styling:** Tailwind CSS + shadcn/ui
+- **Bundler:** Vite
+- **Storage:** localStorage (simulação local)
+- **Icons:** Lucide React
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/8ca6af08-1017-46e6-9d8c-6138a3237ade) and start prompting.
+## Arquitetura da Aplicação
 
-Changes made via Lovable will be committed automatically to this repo.
+### 1. Estrutura de Componentes
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+src/
+├── components/
+│   ├── LoginForm.tsx    # Formulário de login/cadastro
+│   ├── Wallet.tsx       # Interface principal da carteira
+│   └── ui/              # Componentes UI do shadcn
+├── pages/
+│   └── Index.tsx        # Página principal que gerencia estado de auth
+└── App.tsx              # Root component com roteamento
 ```
 
-**Edit a file directly in GitHub**
+### 2. Lógica do Tangle (DAG)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+#### Conceito Implementado
+O Tangle é um DAG onde cada nova transação deve validar duas transações anteriores, criando uma rede descentralizada sem mineradores.
 
-**Use GitHub Codespaces**
+#### Estrutura de Dados
+```typescript
+interface Transaction {
+  id: string;           // Identificador único
+  from: string;         // Endereço remetente
+  to: string;           // Endereço destinatário
+  amount: number;       // Quantidade de tokens
+  timestamp: number;    // Momento da criação
+  validates: string[];  // IDs das transações validadas (sempre 2)
+  validated: boolean;   // Se foi validada por outra transação
+  hash: string;         // Hash simulado da transação
+}
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+#### Algoritmo de Validação
+1. **Criação de Transação:**
+   - Usuário insere destinatário e valor
+   - Sistema executa "Proof of Work" simulado (delay de 1s)
+   - Seleciona 2 transações não validadas aleatoriamente
+   - Cria nova transação validando as 2 selecionadas
+   - Marca as 2 transações como validadas
 
-## What technologies are used for this project?
+2. **Priorização (Nova Funcionalidade):**
+   - Prioriza transações de usuários reais cadastrados
+   - Fallback para transações pendentes simuladas
+   - Mantém pool de 100+ transações pendentes
 
-This project is built with:
+### 3. Sistema de Usuários
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+#### Estrutura de Dados do Usuário
+```typescript
+interface User {
+  password: string;     // Senha (armazenada localmente)
+  balance: number;      // Saldo em tokens 0201N
+  address: string;      // Endereço único da carteira
+  transactions: any[];  // Histórico de transações
+}
+```
 
-## How can I deploy this project?
+#### Funcionalidades
+- **Cadastro:** Cria usuário com 100 tokens iniciais
+- **Login:** Validação de credenciais
+- **Endereço:** Gerado automaticamente (simulado)
 
-Simply open [Lovable](https://lovable.dev/projects/8ca6af08-1017-46e6-9d8c-6138a3237ade) and click on Share -> Publish.
+### 4. Interface Mobile-First
 
-## Can I connect a custom domain to my Lovable project?
+Design inspirado no MetaMask com layout responsivo:
+- **Cards translúcidos** com efeito glass
+- **Orbs flutuantes** para decoração
+- **Gradientes** e animações CSS
+- **Tabs** para navegação entre Enviar/Histórico
 
-Yes, you can!
+## Fluxo de Funcionamento
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### 1. Inicialização
+```
+Usuário acessa → LoginForm → Cadastro/Login → Wallet Dashboard
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### 2. Envio de Transação
+```
+Input dados → Validação saldo → PoW simulado → 
+Seleciona 2 tx para validar → Cria nova tx → 
+Atualiza saldos → Persiste no localStorage
+```
+
+### 3. Estatísticas em Tempo Real
+- **Polling:** Atualização automática a cada segundo
+- **Métricas:** Total de transações, validadas, pendentes, usuários
+- **Auto-reposição:** Gera mais transações quando pool fica baixo
+
+## Características Técnicas
+
+### Simulação do Tangle
+- **DAG Structure:** Cada transação aponta para 2 anteriores
+- **No Miners:** Validação distribuída entre usuários
+- **Feeless:** Sem taxas de transação
+- **Scalable:** Performance melhora com mais transações
+
+### Limitações da Simulação
+- **Local Storage:** Dados apenas no navegador
+- **Simplified PoW:** Delay simulado, não cálculo real
+- **No Network:** Não há comunicação entre usuários
+- **Deterministic:** Algoritmos simplificados
+
+## Como Executar
+
+```bash
+# Instalar dependências
+npm install
+
+# Executar em desenvolvimento
+npm run dev
+
+# Build para produção
+npm run build
+```
+
+## Funcionalidades Principais
+
+### 🔐 Autenticação
+- Cadastro com senha
+- Login persistente
+- Logout seguro
+
+### 💰 Carteira Digital
+- Visualização de saldo
+- Histórico de transações
+- Envio de tokens
+- Endereço único
+
+### 🕸️ Simulação Tangle
+- Validação de 2 transações por envio
+- Pool de transações pendentes
+- Atualização em tempo real
+- Priorização de usuários reais
+
+### 📱 Interface Moderna
+- Design mobile-first
+- Animações fluidas
+- Efeitos visuais
+- UX intuitiva
+
+## Próximas Melhorias
+
+- [ ] Integração com backend real
+- [ ] Visualização gráfica do DAG
+- [ ] Criptografia de senhas
+- [ ] Export/Import de carteiras
+- [ ] Múltiplas moedas
+- [ ] Notificações push
+
+## Contribuição
+
+Este é um projeto educacional para demonstrar conceitos de blockchain e DAG. Contribuições são bem-vindas!

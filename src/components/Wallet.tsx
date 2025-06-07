@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Copy, Send, LogOut, Wallet as WalletIcon, Activity, Eye, EyeOff } from 'lucide-react';
+import { useRealTimeStats } from '@/hooks/useRealTimeStats';
+import { validateTwoTransactionsWithPriority } from '@/utils/transactionPriority';
 
 interface Transaction {
   id: string;
@@ -32,6 +33,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showBalance, setShowBalance] = useState(true);
+  const stats = useRealTimeStats();
 
   useEffect(() => {
     initializePendingTransactions();
@@ -52,7 +54,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
 
   const generatePendingTransactions = (count: number) => {
     const transactions: Transaction[] = [];
-    const baseTime = Date.now() - (count * 60000); // Espaça as transações por 1 minuto
+    const baseTime = Date.now() - (count * 60000);
 
     for (let i = 0; i < count; i++) {
       const transaction: Transaction = {
@@ -105,21 +107,6 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
     return `hash_${btoa(data).slice(0, 16)}`;
   };
 
-  const validateTwoTransactions = () => {
-    // Pega duas transações não validadas aleatoriamente
-    const unvalidatedTxs = allTransactions.filter(tx => !tx.validated);
-    const selected = [];
-    
-    for (let i = 0; i < Math.min(2, unvalidatedTxs.length); i++) {
-      const randomIndex = Math.floor(Math.random() * unvalidatedTxs.length);
-      if (!selected.includes(unvalidatedTxs[randomIndex].id)) {
-        selected.push(unvalidatedTxs[randomIndex].id);
-      }
-    }
-    
-    return selected;
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
@@ -151,13 +138,10 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
     setIsLoading(true);
 
     try {
-      // Simula Proof of Work (pequeno delay)
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Valida duas transações anteriores
-      const validatedTxs = validateTwoTransactions();
+      const validatedTxs = validateTwoTransactionsWithPriority(allTransactions);
 
-      // Cria nova transação
       const newTransaction: Transaction = {
         id: generateTransactionId(),
         from: userInfo.address,
@@ -171,25 +155,20 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
 
       newTransaction.hash = generateHash(newTransaction);
 
-      // Atualiza transações validadas
       const updatedTransactions = allTransactions.map(tx => 
         validatedTxs.includes(tx.id) ? { ...tx, validated: true } : tx
       );
 
-      // Adiciona nova transação
       const finalTransactions = [...updatedTransactions, newTransaction];
 
-      // Atualiza saldos
       const users = JSON.parse(localStorage.getItem('iotaUsers') || '{}');
       users[username].balance -= amountNum;
       
-      // Simula encontrar o destinatário e atualizar seu saldo
       const recipient = Object.keys(users).find(user => users[user].address === toAddress);
       if (recipient) {
         users[recipient].balance += amountNum;
       }
 
-      // Salva tudo
       localStorage.setItem('iotaUsers', JSON.stringify(users));
       localStorage.setItem('iotaTransactions', JSON.stringify(finalTransactions));
 
@@ -198,7 +177,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
 
       toast({
         title: "Transação enviada!",
-        description: `${validatedTxs.length} transações validadas no processo`
+        description: `${validatedTxs.length} transações validadas (priorizando usuários reais)`
       });
 
       setToAddress('');
@@ -233,9 +212,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
         <div className="orb"></div>
       </div>
 
-      {/* Layout Mobile-First estilo MetaMask */}
       <div className="max-w-sm mx-auto min-h-screen bg-white/20 backdrop-blur-md shadow-2xl">
-        {/* Header Mobile */}
         <div className="bg-white/30 backdrop-blur-md border-b border-white/20 p-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
@@ -254,7 +231,6 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
         </div>
 
         <div className="p-4 space-y-4">
-          {/* Card do Saldo Mobile */}
           <Card className="glass-effect border-white/30 shadow-lg">
             <CardContent className="p-4">
               <div className="text-center space-y-3">
@@ -307,7 +283,6 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
             </CardContent>
           </Card>
 
-          {/* Tabs Mobile */}
           <Tabs defaultValue="send" className="w-full">
             <TabsList className="grid w-full grid-cols-2 h-10">
               <TabsTrigger value="send" className="text-xs">Enviar</TabsTrigger>
@@ -322,7 +297,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                     Enviar 0201N
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Cada transação valida duas transações anteriores no Tangle
+                    Cada transação valida duas transações anteriores no Tangle (prioriza usuários reais)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -434,35 +409,37 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
             </TabsContent>
           </Tabs>
 
-          {/* Estatísticas da Rede Mobile */}
           <Card className="glass-effect border-white/30 shadow-lg">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Rede 0201N Tangle (DAG)</CardTitle>
+              <CardTitle className="flex items-center text-base">
+                <Activity className="w-4 h-4 mr-2" />
+                Rede 0201N Tangle (DAG)
+              </CardTitle>
               <CardDescription className="text-xs">
-                Estatísticas em tempo real
+                Estatísticas em tempo real (atualiza automaticamente)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
                 <div className="text-center p-3 bg-white/40 rounded-lg shadow-sm">
-                  <div className="text-lg font-bold text-primary">{allTransactions.length}</div>
+                  <div className="text-lg font-bold text-primary">{stats.totalTransactions}</div>
                   <div className="text-xs text-muted-foreground">Total</div>
                 </div>
                 <div className="text-center p-3 bg-white/40 rounded-lg shadow-sm">
                   <div className="text-lg font-bold text-green-600">
-                    {allTransactions.filter(tx => tx.validated).length}
+                    {stats.validatedTransactions}
                   </div>
                   <div className="text-xs text-muted-foreground">Validadas</div>
                 </div>
                 <div className="text-center p-3 bg-white/40 rounded-lg shadow-sm">
                   <div className="text-lg font-bold text-orange-600">
-                    {allTransactions.filter(tx => !tx.validated).length}
+                    {stats.pendingTransactions}
                   </div>
                   <div className="text-xs text-muted-foreground">Pendentes</div>
                 </div>
                 <div className="text-center p-3 bg-white/40 rounded-lg shadow-sm">
                   <div className="text-lg font-bold text-purple-600">
-                    {Object.keys(JSON.parse(localStorage.getItem('iotaUsers') || '{}')).length}
+                    {stats.totalUsers}
                   </div>
                   <div className="text-xs text-muted-foreground">Usuários</div>
                 </div>
