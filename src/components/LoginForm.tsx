@@ -100,7 +100,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           </div>
           <CardTitle className="text-2xl font-bold">CC Wallet</CardTitle>
           <CardDescription>
-            Sistema de simulação 0201N Tangle
+            Sistema de simulação 0201N Tangle (DAG)
           </CardDescription>
         </CardHeader>
         <CardContent>
