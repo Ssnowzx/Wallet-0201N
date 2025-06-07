@@ -6,9 +6,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Copy, Send, LogOut, Wallet as WalletIcon, Activity, Eye, EyeOff } from 'lucide-react';
+import { Copy, Send, LogOut, Wallet as WalletIcon, Activity, Eye, EyeOff, Network } from 'lucide-react';
 import { useRealTimeStats } from '@/hooks/useRealTimeStats';
 import { validateTwoTransactionsWithPriority } from '@/utils/transactionPriority';
+import TransactionGraph3D from './TransactionGraph3D';
 
 interface Transaction {
   id: string;
@@ -284,9 +285,10 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
           </Card>
 
           <Tabs defaultValue="send" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-10">
+            <TabsList className="grid w-full grid-cols-3 h-10">
               <TabsTrigger value="send" className="text-xs">Enviar</TabsTrigger>
               <TabsTrigger value="history" className="text-xs">Histórico</TabsTrigger>
+              <TabsTrigger value="graph" className="text-xs">Grafo 3D</TabsTrigger>
             </TabsList>
 
             <TabsContent value="send" className="mt-4">
@@ -403,6 +405,25 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                         </div>
                       ))
                     )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="graph" className="mt-4">
+              <Card className="glass-effect border-white/30 shadow-lg">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center text-base">
+                    <Network className="w-4 h-4 mr-2" />
+                    Visualização 3D do Tangle
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Grafo 3D representando transações e validações na rede 0201N
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="h-80 w-full">
+                    <TransactionGraph3D transactions={allTransactions} />
                   </div>
                 </CardContent>
               </Card>
