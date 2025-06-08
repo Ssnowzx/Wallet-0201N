@@ -123,6 +123,24 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
         description: "Preencha todos os campos",
         variant: "destructive"
       });
+      // Auto-dismiss after 1 second
+      setTimeout(() => {
+        // The toast will be auto-dismissed by the timeout in use-toast
+      }, 1000);
+      return;
+    }
+
+    // Check if trying to send to own address
+    if (toAddress === userInfo.address) {
+      toast({
+        title: "Erro",
+        description: "Não é possível enviar transações para seu próprio endereço",
+        variant: "destructive"
+      });
+      // Auto-dismiss after 1 second
+      setTimeout(() => {
+        // The toast will be auto-dismissed by the timeout in use-toast
+      }, 1000);
       return;
     }
 
@@ -133,6 +151,10 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
         description: "Valor inválido ou saldo insuficiente",
         variant: "destructive"
       });
+      // Auto-dismiss after 1 second
+      setTimeout(() => {
+        // The toast will be auto-dismissed by the timeout in use-toast
+      }, 1000);
       return;
     }
 
@@ -176,10 +198,15 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
       loadUserData();
       loadAllTransactions();
 
-      toast({
-        title: "Transação enviada!",
+      const successToast = toast({
+        title: "Transação enviada! ✅",
         description: `${validatedTxs.length} transações validadas (priorizando usuários reais)`
       });
+
+      // Auto-dismiss success toast after 1 second
+      setTimeout(() => {
+        successToast.dismiss();
+      }, 1000);
 
       setToAddress('');
       setAmount('');
@@ -189,6 +216,10 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
         description: "Falha ao processar transação",
         variant: "destructive"
       });
+      // Auto-dismiss after 1 second
+      setTimeout(() => {
+        // The toast will be auto-dismissed by the timeout in use-toast
+      }, 1000);
     }
 
     setIsLoading(false);

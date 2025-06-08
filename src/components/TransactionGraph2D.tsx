@@ -13,17 +13,17 @@ interface Transaction {
   hash: string;
 }
 
-interface GraphNode {
+interface GraphNode extends d3.SimulationNodeDatum {
   id: string;
-  x: number;
-  y: number;
   type: 'transaction' | 'address';
   data: Transaction | { address: string; balance: number };
+  fx?: number;
+  fy?: number;
 }
 
 interface GraphLink {
-  source: string;
-  target: string;
+  source: string | GraphNode;
+  target: string | GraphNode;
   type: 'transaction' | 'validation';
 }
 
@@ -40,71 +40,24 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
     
     const nodeMap = new Map<string, GraphNode>();
     const linkArray: GraphLink[] = [];
-    const addressSet = new Set<string>();
 
-    // Collect all unique addresses
-    transactions.forEach(tx => {
-      addressSet.add(tx.from);
-      addressSet.add(tx.to);
-    });
-
-    // Create address nodes positioned in a circle
-    const addresses = Array.from(addressSet);
-    addresses.forEach((address, index) => {
-      const angle = (index / addresses.length) * Math.PI * 2;
-      const radius = 150;
-      nodeMap.set(address, {
-        id: address,
-        x: Math.cos(angle) * radius + 200,
-        y: Math.sin(angle) * radius + 150,
-        type: 'address',
-        data: { address, balance: 0 }
-      });
-    });
-
-    // Create transaction nodes using D3 force simulation
-    const simulationNodes = transactions.map(tx => ({ ...tx }));
-    const simulationLinks = transactions.flatMap(tx =>
-      tx.validates.map(validatedTxId => ({
-        source: tx.id,
-        target: validatedTxId
-      }))
-    );
-
-    const simulation = d3.forceSimulation(simulationNodes)
-      .force('link', d3.forceLink(simulationLinks).id((d: any) => d.id).distance(50))
-      .force('charge', d3.forceManyBody().strength(-300))
-      .force('center', d3.forceCenter(200, 150))
-      .force('collision', d3.forceCollide().radius(20))
-      .stop();
-
-    for (let i = 0; i < 300; ++i) simulation.tick();
-
-    // Add transaction nodes
-    simulationNodes.forEach(tx => {
-      nodeMap.set(tx.id, {
+    // Create transaction nodes first
+    transactions.forEach((tx, index) => {
+      const node: GraphNode = {
         id: tx.id,
-        x: tx.x || Math.random() * 400,
-        y: tx.y || Math.random() * 300,
         type: 'transaction',
-        data: tx
-      });
+        data: tx,
+        // Arrange in a more structured way for Tangle visualization
+        x: 50 + (index % 8) * 45,
+        y: 50 + Math.floor(index / 8) * 60
+      };
+      nodeMap.set(tx.id, node);
+    });
 
-      // Create transaction flow links
-      linkArray.push({
-        source: tx.from,
-        target: tx.id,
-        type: 'transaction'
-      });
-      linkArray.push({
-        source: tx.id,
-        target: tx.to,
-        type: 'transaction'
-      });
-
-      // Create validation links
+    // Create validation links (this is the key part for Tangle structure)
+    transactions.forEach(tx => {
       tx.validates.forEach(validatedTxId => {
-        if (nodeMap.has(validatedTxId) || transactions.find(t => t.id === validatedTxId)) {
+        if (nodeMap.has(validatedTxId)) {
           linkArray.push({
             source: tx.id,
             target: validatedTxId,
@@ -121,7 +74,7 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
   }, [transactions]);
 
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || nodes.length === 0) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -135,7 +88,7 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
       .enter().append("marker")
       .attr("id", d => `arrow-${d}`)
       .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 20)
+      .attr("refX", 25)
       .attr("refY", 0)
       .attr("markerWidth", 6)
       .attr("markerHeight", 6)
@@ -144,15 +97,24 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
       .attr("d", "M0,-5L10,0L0,5")
       .attr("fill", "#EF4444");
 
+    // Create force simulation for better positioning
+    const simulation = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(80).strength(0.8))
+      .force('charge', d3.forceManyBody().strength(-200))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collision', d3.forceCollide().radius(25))
+      .force('x', d3.forceX(width / 2).strength(0.1))
+      .force('y', d3.forceY(height / 2).strength(0.1));
+
     // Create links
     const linkSelection = svg.selectAll(".link")
       .data(links)
       .enter().append("line")
       .attr("class", "link")
-      .attr("stroke", d => d.type === 'validation' ? '#EF4444' : '#3B82F6')
-      .attr("stroke-width", d => d.type === 'validation' ? 2 : 1)
-      .attr("stroke-opacity", 0.7)
-      .attr("marker-end", d => d.type === 'validation' ? "url(#arrow-validation)" : "");
+      .attr("stroke", "#EF4444")
+      .attr("stroke-width", 2)
+      .attr("stroke-opacity", 0.8)
+      .attr("marker-end", "url(#arrow-validation)");
 
     // Create nodes
     const nodeSelection = svg.selectAll(".node")
@@ -160,60 +122,64 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
       .enter().append("circle")
       .attr("class", "node")
       .attr("r", d => {
-        if (d.type === 'address') return 8;
         const tx = d.data as Transaction;
-        return Math.max(3, Math.min(12, tx.amount / 10));
+        return Math.max(8, Math.min(15, tx.amount / 5));
       })
       .attr("fill", d => {
-        if (d.type === 'address') return '#8B5CF6';
         const tx = d.data as Transaction;
         return tx.validated ? '#10B981' : '#F59E0B';
       })
-      .attr("stroke", d => selectedNode === d.id ? '#000' : 'none')
-      .attr("stroke-width", 2)
+      .attr("stroke", d => selectedNode === d.id ? '#000' : '#fff')
+      .attr("stroke-width", d => selectedNode === d.id ? 3 : 2)
       .style("cursor", "pointer")
       .on("click", (event, d) => {
         setSelectedNode(selectedNode === d.id ? null : d.id);
-      });
+      })
+      .call(d3.drag<SVGCircleElement, GraphNode>()
+        .on("start", (event, d) => {
+          if (!event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        })
+        .on("drag", (event, d) => {
+          d.fx = event.x;
+          d.fy = event.y;
+        })
+        .on("end", (event, d) => {
+          if (!event.active) simulation.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+        }));
 
-    // Add node labels for transaction amounts
-    svg.selectAll(".node-label")
-      .data(nodes.filter(n => n.type === 'transaction'))
+    // Add node labels
+    const labelSelection = svg.selectAll(".node-label")
+      .data(nodes)
       .enter().append("text")
       .attr("class", "node-label")
       .attr("text-anchor", "middle")
       .attr("dy", ".35em")
-      .attr("font-size", "8px")
+      .attr("font-size", "10px")
+      .attr("font-weight", "bold")
       .attr("fill", "white")
       .attr("pointer-events", "none")
       .text(d => (d.data as Transaction).amount.toFixed(1));
 
-    // Update positions
-    linkSelection
-      .attr("x1", d => {
-        const sourceNode = nodes.find(n => n.id === d.source);
-        return sourceNode ? sourceNode.x : 0;
-      })
-      .attr("y1", d => {
-        const sourceNode = nodes.find(n => n.id === d.source);
-        return sourceNode ? sourceNode.y : 0;
-      })
-      .attr("x2", d => {
-        const targetNode = nodes.find(n => n.id === d.target);
-        return targetNode ? targetNode.x : 0;
-      })
-      .attr("y2", d => {
-        const targetNode = nodes.find(n => n.id === d.target);
-        return targetNode ? targetNode.y : 0;
-      });
+    // Update positions on simulation tick
+    simulation.on("tick", () => {
+      linkSelection
+        .attr("x1", d => (d.source as GraphNode).x!)
+        .attr("y1", d => (d.source as GraphNode).y!)
+        .attr("x2", d => (d.target as GraphNode).x!)
+        .attr("y2", d => (d.target as GraphNode).y!);
 
-    nodeSelection
-      .attr("cx", d => d.x)
-      .attr("cy", d => d.y);
+      nodeSelection
+        .attr("cx", d => d.x!)
+        .attr("cy", d => d.y!);
 
-    svg.selectAll(".node-label")
-      .attr("x", d => d.x)
-      .attr("y", d => d.y);
+      labelSelection
+        .attr("x", d => d.x!)
+        .attr("y", d => d.y!);
+    });
 
   }, [nodes, links, selectedNode]);
 
@@ -228,33 +194,23 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
       };
     }
     
-    return {
-      type: 'address',
-      data: { address: selectedNode }
-    };
+    return null;
   }, [selectedNode, transactions]);
 
   return (
     <div className="h-full w-full relative">
       {selectedNodeInfo && (
-        <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-md rounded-lg p-3 shadow-lg max-w-xs">
-          <h3 className="text-sm font-semibold mb-2">Detalhes do Nó</h3>
-          {selectedNodeInfo.type === 'transaction' ? (
-            <div className="space-y-1 text-xs">
-              <p><strong>ID:</strong> {(selectedNodeInfo.data as Transaction).id.slice(0, 12)}...</p>
-              <p><strong>Valor:</strong> {(selectedNodeInfo.data as Transaction).amount} 0201N</p>
-              <p><strong>Status:</strong> {(selectedNodeInfo.data as Transaction).validated ? 'Validada' : 'Pendente'}</p>
-              <p><strong>Valida:</strong> {(selectedNodeInfo.data as Transaction).validates.length} transações</p>
-            </div>
-          ) : (
-            <div className="space-y-1 text-xs">
-              <p><strong>Endereço:</strong></p>
-              <p className="font-mono break-all">{(selectedNodeInfo.data as any).address.slice(0, 20)}...</p>
-            </div>
-          )}
+        <div className="absolute top-4 right-4 z-10 bg-white/95 backdrop-blur-md rounded-lg p-3 shadow-lg max-w-xs border">
+          <h3 className="text-sm font-semibold mb-2">Detalhes da Transação</h3>
+          <div className="space-y-1 text-xs">
+            <p><strong>ID:</strong> {(selectedNodeInfo.data as Transaction).id.slice(0, 12)}...</p>
+            <p><strong>Valor:</strong> {(selectedNodeInfo.data as Transaction).amount} 0201N</p>
+            <p><strong>Status:</strong> {(selectedNodeInfo.data as Transaction).validated ? '✅ Validada' : '⏳ Pendente'}</p>
+            <p><strong>Valida:</strong> {(selectedNodeInfo.data as Transaction).validates.length} transação(ões)</p>
+          </div>
           <button 
             onClick={() => setSelectedNode(null)}
-            className="mt-2 text-xs text-gray-500 hover:text-gray-700"
+            className="mt-2 text-xs text-gray-500 hover:text-gray-700 underline"
           >
             Fechar
           </button>
@@ -267,33 +223,28 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
           width="100%"
           height="240"
           viewBox="0 0 400 300"
-          className="border border-gray-200 rounded-lg bg-white"
+          className="border border-gray-200 rounded-lg bg-gradient-to-br from-blue-50 to-purple-50"
         />
         
-        <div className="mt-2 bg-white/90 backdrop-blur-md rounded-lg p-2 shadow-lg">
-          <p className="text-xs text-gray-600 mb-2">
-            Clique nos nós para detalhes
+        <div className="mt-2 bg-white/95 backdrop-blur-md rounded-lg p-3 shadow-sm border">
+          <p className="text-xs text-gray-600 mb-2 font-medium">
+            🔍 Clique nos nós para detalhes • Arraste para reposicionar
           </p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-              <span>Endereços</span>
+              <div className="w-3 h-3 rounded-full bg-green-500 border-2 border-white shadow-sm"></div>
+              <span>Transações Validadas</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 rounded-full bg-green-500"></div>
-              <span>Validadas</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-              <span>Pendentes</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-0.5 bg-blue-500"></div>
-              <span>Fluxo</span>
+              <div className="w-3 h-3 rounded-full bg-yellow-500 border-2 border-white shadow-sm"></div>
+              <span>Transações Pendentes</span>
             </div>
             <div className="flex items-center space-x-2 col-span-2">
-              <div className="w-3 h-0.5 bg-red-500"></div>
-              <span>→ Validação</span>
+              <div className="flex items-center space-x-1">
+                <div className="w-4 h-0.5 bg-red-500"></div>
+                <div className="text-red-500">→</div>
+              </div>
+              <span>Setas de Validação (Tangle DAG)</span>
             </div>
           </div>
         </div>
