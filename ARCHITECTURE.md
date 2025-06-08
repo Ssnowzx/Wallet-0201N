@@ -5,62 +5,62 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CC WALLET FRONTEND v1.3                       │
+│                              CC WALLET FRONTEND v1.3                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────────────────┐  │
 │  │ LoginForm   │    │   Wallet    │    │      useRealTimeStats           │  │
 │  │             │    │  (508 LOC)  │    │                                 │  │
-│  │ - Cadastro  │◄───┤ - Saldo     │◄───┤ - Polling 1s                   │  │
+│  │ - Cadastro  │◄───┤ - Saldo     │◄───┤ - Polling 1s                    │  │
 │  │ - Login     │    │ - Enviar    │    │ - localStorage listener         │  │
 │  │ - Validação │    │ - Histórico │    │ - Auto update stats             │  │
 │  │ - Sessão    │    │ - Grafo 2D  │    │ - Performance optimized         │  │
 │  └─────────────┘    │ - Stats     │    └─────────────────────────────────┘  │
-│                     │ + Neon FX   │                                        │
-│                     └─────────────┘                                        │
-│                            │                                               │
-│                            ▼                                               │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │               TRANSACTION PRIORITY LOGIC v2.0                       │   │
-│  │                                                                     │   │
-│  │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐  │   │
-│  │  │ Real User TXs   │    │ Pending Pool    │    │ Validation      │  │   │
-│  │  │                 │    │                 │    │                 │  │   │
-│  │  │ Priority: HIGH  │────┤ Priority: LOW   │────┤ Always picks 2  │  │   │
-│  │  │ From: users DB  │    │ Auto-refill     │    │ Available TXs   │  │   │
-│  │  │ Anti-self-send  │    │ ≤20 → +100 TXs  │    │ Smart selection │  │   │
-│  │  └─────────────────┘    └─────────────────┘    └─────────────────┘  │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
+│                     │ + Neon FX   │                                         │
+│                     └─────────────┘                                         │
+│                            │                                                │
+│                            ▼                                                │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │               TRANSACTION PRIORITY LOGIC v2.0                       │    │
+│  │                                                                     │    │
+│  │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐  │    │
+│  │  │ Real User TXs   │    │ Pending Pool    │    │ Validation      │  │    │
+│  │  │                 │    │                 │    │                 │  │    │
+│  │  │ Priority: HIGH  │────┤ Priority: LOW   │────┤ Always picks 2  │  │    │
+│  │  │ From: users DB  │    │ Auto-refill     │    │ Available TXs   │  │    │
+│  │  │ Anti-self-send  │    │ ≤20 → +100 TXs  │    │ Smart selection │  │    │
+│  │  └─────────────────┘    └─────────────────┘    └─────────────────┘  │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    VISUALIZATION LAYER v1.3                        │   │
-│  │                                                                     │   │
-│  │  ┌─────────────────┐              ┌─────────────────────────────────┐  │
-│  │  │ TransactionG2D  │              │        Visual Effects           │  │
-│  │  │   (257 LOC)     │              │                                 │  │
-│  │  │ - D3.js Force   │              │ - Neon rotating light (CSS)     │  │
-│  │  │ - 800x600px     │              │ - Floating orbs animation       │  │
-│  │  │ - Interactive   │              │ - Glass morphism effects        │  │
-│  │  │ - Drag & Drop   │              │ - Auto-dismiss toasts (1s)      │  │
-│  │  │ - Click details │              │ - Gradient backgrounds          │  │
-│  │  └─────────────────┘              └─────────────────────────────────┘  │
-│  └─────────────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                    VISUALIZATION LAYER v1.3                         │    │
+│  │                                                                     │    │
+│  │  ┌─────────────────┐              ┌─────────────────────────────────┐    │
+│  │  │ TransactionG2D  │              │        Visual Effects           │    │
+│  │  │   (257 LOC)     │              │                                 │    │
+│  │  │ - D3.js Force   │              │ - Neon rotating light (CSS)     │    │
+│  │  │ - 800x600px     │              │ - Floating orbs animation       │    │
+│  │  │ - Interactive   │              │ - Glass morphism effects        │    │
+│  │  │ - Drag & Drop   │              │ - Auto-dismiss toasts (1s)      │    │
+│  │  │ - Click details │              │ - Gradient backgrounds          │    │
+│  │  └─────────────────┘              └─────────────────────────────────┘    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                          ENHANCED UI/UX LAYER v1.3                         │
+│                          ENHANCED UI/UX LAYER v1.3                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────────┐  │
-│  │ Toast System    │    │ Privacy Toggle  │    │    Interactive Tabs    │  │
+│  │ Toast System    │    │ Privacy Toggle  │    │    Interactive Tabs     │  │
 │  │                 │    │                 │    │                         │  │
-│  │ - Auto-dismiss  │    │ - Show/Hide     │    │ - Enviar               │  │
-│  │ - 1s timeout    │    │ - Balance       │    │ - Histórico            │  │
-│  │ - Context msgs  │    │ - Eye icons     │    │ - Grafo 2D (expanded)  │  │
-│  │ - Error/Success │    │ - Security UX   │    │ - Smooth transitions   │  │
+│  │ - Auto-dismiss  │    │ - Show/Hide     │    │ - Enviar                │  │
+│  │ - 1s timeout    │    │ - Balance       │    │ - Histórico             │  │
+│  │ - Context msgs  │    │ - Eye icons     │    │ - Grafo 2D (expanded)   │  │
+│  │ - Error/Success │    │ - Security UX   │    │ - Smooth transitions    │  │
 │  └─────────────────┘    └─────────────────┘    └─────────────────────────┘  │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                            LOCAL STORAGE LAYER                             │
+│                            LOCAL STORAGE LAYER                              │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────────┐              ┌─────────────────────────────────────┐   │
@@ -82,7 +82,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                      ENHANCED TANGLE DAG WORKFLOW v2.0                     │
+│                      ENHANCED TANGLE DAG WORKFLOW v2.0                      │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 1. USER CREATES TRANSACTION
