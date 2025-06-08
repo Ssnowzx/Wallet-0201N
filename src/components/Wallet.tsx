@@ -9,7 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { Copy, Send, LogOut, Wallet as WalletIcon, Activity, Eye, EyeOff, Network } from 'lucide-react';
 import { useRealTimeStats } from '@/hooks/useRealTimeStats';
 import { validateTwoTransactionsWithPriority } from '@/utils/transactionPriority';
-import TransactionGraph3D from './TransactionGraph3D';
+import TransactionGraph2D from './TransactionGraph2D';
 
 interface Transaction {
   id: string;
@@ -288,7 +288,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
             <TabsList className="grid w-full grid-cols-3 h-10">
               <TabsTrigger value="send" className="text-xs">Enviar</TabsTrigger>
               <TabsTrigger value="history" className="text-xs">Histórico</TabsTrigger>
-              <TabsTrigger value="graph" className="text-xs">Grafo 3D</TabsTrigger>
+              <TabsTrigger value="graph" className="text-xs">Grafo 2D</TabsTrigger>
             </TabsList>
 
             <TabsContent value="send" className="mt-4">
@@ -415,15 +415,15 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center text-base">
                     <Network className="w-4 h-4 mr-2" />
-                    Visualização 3D do Tangle
+                    Visualização 2D do Tangle
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Grafo 3D representando transações e validações na rede 0201N
+                    Grafo 2D representando transações e validações na rede 0201N
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-2">
                   <div className="h-80 w-full">
-                    <TransactionGraph3D transactions={allTransactions} />
+                    <TransactionGraph2D transactions={allTransactions} />
                   </div>
                 </CardContent>
               </Card>

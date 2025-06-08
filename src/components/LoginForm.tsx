@@ -37,7 +37,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         if (users[username]) {
           toast({
             title: "Erro",
-            description: "Usuário já existe",
+            description: "Nome de usuário já existe",
             variant: "destructive"
           });
           setIsLoading(false);
@@ -64,7 +64,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         if (!users[username] || users[username].password !== password) {
           toast({
             title: "Erro",
-            description: "Usuário ou senha incorretos",
+            description: "Nome de usuário ou senha incorretos",
             variant: "destructive"
           });
           setIsLoading(false);
@@ -113,7 +113,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             <TabsContent value="login">
               <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Nome de usuário</Label>
+                  <Label htmlFor="username">Nome</Label>
                   <Input
                     id="username"
                     type="text"
@@ -147,7 +147,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             <TabsContent value="signup">
               <form onSubmit={(e) => handleSubmit(e, true)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-username">Nome de usuário</Label>
+                  <Label htmlFor="new-username">Nome</Label>
                   <Input
                     id="new-username"
                     type="text"
