@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Text, Sphere, Line } from '@react-three/drei';
+import { OrbitControls, Text, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import * as d3 from 'd3';
 
@@ -109,28 +109,57 @@ const TransactionNode: React.FC<TransactionNodeProps> = ({ node, isSelected, onC
   );
 };
 
-interface ConnectionLineProps {
+interface ArrowLineProps {
   start: [number, number, number];
   end: [number, number, number];
   type: 'transaction' | 'validation';
 }
 
-const ConnectionLine: React.FC<ConnectionLineProps> = ({ start, end, type }) => {
-  const points = useMemo(() => [
-    new THREE.Vector3(...start),
-    new THREE.Vector3(...end)
-  ], [start, end]);
+const ArrowLine: React.FC<ArrowLineProps> = ({ start, end, type }) => {
+  const arrowRef = useRef<THREE.Group>(null);
+  
+  const { points, arrowPosition, arrowRotation } = useMemo(() => {
+    const startVec = new THREE.Vector3(...start);
+    const endVec = new THREE.Vector3(...end);
+    
+    // Calculate line points
+    const points = [startVec, endVec];
+    
+    // Calculate arrow position (at the end of the line)
+    const direction = endVec.clone().sub(startVec).normalize();
+    const arrowPosition = endVec.clone().sub(direction.clone().multiplyScalar(0.2));
+    
+    // Calculate arrow rotation
+    const arrowRotation = new THREE.Euler();
+    const up = new THREE.Vector3(0, 1, 0);
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(up, direction);
+    arrowRotation.setFromQuaternion(quaternion);
+    
+    return { points, arrowPosition, arrowRotation };
+  }, [start, end]);
 
   const lineColor = type === 'validation' ? '#EF4444' : '#3B82F6';
+  const lineWidth = type === 'validation' ? 3 : 1;
 
   return (
-    <Line
-      points={points}
-      color={lineColor}
-      lineWidth={type === 'validation' ? 2 : 1}
-      transparent
-      opacity={0.6}
-    />
+    <group ref={arrowRef}>
+      {/* Line */}
+      <Line
+        points={points}
+        color={lineColor}
+        lineWidth={lineWidth}
+        transparent
+        opacity={0.7}
+      />
+      
+      {/* Arrow head (only for validation lines) */}
+      {type === 'validation' && (
+        <mesh position={arrowPosition} rotation={arrowRotation}>
+          <coneGeometry args={[0.1, 0.2, 8]} />
+          <meshPhongMaterial color={lineColor} />
+        </mesh>
+      )}
+    </group>
   );
 };
 
@@ -159,7 +188,7 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
     const addresses = Array.from(addressSet);
     addresses.forEach((address, index) => {
       const angle = (index / addresses.length) * Math.PI * 2;
-      const radius = 4;
+      const radius = 5;
       nodeMap.set(address, {
         id: address,
         x: Math.cos(angle) * radius,
@@ -194,10 +223,10 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
 
     // Create and run D3 force simulation for 2D positioning
     const simulation = d3.forceSimulation(simulationTransactions)
-      .force('link', d3.forceLink(simulationLinks).id((d: any) => d.id).distance(2))
-      .force('charge', d3.forceManyBody().strength(-50))
-      .force('center', d3.forceCenter(0, 2))
-      .force('collision', d3.forceCollide().radius(0.5))
+      .force('link', d3.forceLink(simulationLinks).id((d: any) => d.id).distance(3))
+      .force('charge', d3.forceManyBody().strength(-100))
+      .force('center', d3.forceCenter(0, 3))
+      .force('collision', d3.forceCollide().radius(1))
       .stop();
 
     // Run simulation to completion
@@ -207,9 +236,9 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
     simulationTransactions.forEach(tx => {
       nodeMap.set(tx.id, {
         id: tx.id,
-        x: tx.x || Math.random() * 4 - 2,
-        y: (tx.y || 0) + 2,
-        z: Math.random() * 4 - 2,
+        x: tx.x || Math.random() * 6 - 3,
+        y: (tx.y || 0) + 3,
+        z: Math.random() * 6 - 3,
         type: 'transaction',
         data: {
           id: tx.id,
@@ -223,7 +252,7 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
         }
       });
 
-      // Create links from transaction to addresses
+      // Create links from addresses to transactions (transaction flow)
       linkArray.push({
         source: tx.from,
         target: tx.id,
@@ -235,7 +264,7 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
         type: 'transaction'
       });
 
-      // Create validation links
+      // Create validation links with arrows
       tx.validates.forEach(validatedTxId => {
         if (nodeMap.has(validatedTxId) || transactions.find(t => t.id === validatedTxId)) {
           linkArray.push({
@@ -257,9 +286,9 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
 
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <pointLight position={[10, 10, 10]} intensity={0.8} />
-      <pointLight position={[-10, -10, -10]} intensity={0.3} />
+      <ambientLight intensity={0.5} />
+      <pointLight position={[10, 10, 10]} intensity={1} />
+      <pointLight position={[-10, -10, -10]} intensity={0.4} />
       
       {nodes.map(node => (
         <TransactionNode
@@ -277,7 +306,7 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
         if (!sourceNode || !targetNode) return null;
         
         return (
-          <ConnectionLine
+          <ArrowLine
             key={index}
             start={[sourceNode.x, sourceNode.y, sourceNode.z]}
             end={[targetNode.x, targetNode.y, targetNode.z]}
@@ -323,32 +352,6 @@ const TransactionGraph3D: React.FC<TransactionGraph3DProps> = ({ transactions })
 
   return (
     <div className="h-full w-full relative">
-      <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-md rounded-lg p-3 shadow-lg max-w-xs">
-        <h3 className="text-sm font-semibold mb-2">Legenda do Grafo 3D</h3>
-        <div className="space-y-1 text-xs">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-            <span>Endereços</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span>Transações Validadas</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <span>Transações Pendentes</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-1 bg-blue-500"></div>
-            <span>Fluxo de Transação</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-1 bg-red-500"></div>
-            <span>Validação</span>
-          </div>
-        </div>
-      </div>
-
       {selectedNodeInfo && (
         <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-md rounded-lg p-3 shadow-lg max-w-xs">
           <h3 className="text-sm font-semibold mb-2">Detalhes do Nó</h3>
@@ -374,7 +377,7 @@ const TransactionGraph3D: React.FC<TransactionGraph3DProps> = ({ transactions })
         </div>
       )}
 
-      <Canvas camera={{ position: [8, 8, 8], fov: 60 }}>
+      <Canvas camera={{ position: [10, 10, 10], fov: 60 }}>
         <Graph3DScene 
           transactions={transactions}
           selectedNode={selectedNode}
@@ -386,6 +389,28 @@ const TransactionGraph3D: React.FC<TransactionGraph3DProps> = ({ transactions })
         <p className="text-xs text-gray-600">
           Arraste para rotacionar • Scroll para zoom • Clique nos nós para detalhes
         </p>
+        <div className="mt-2 space-y-1 text-xs">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+            <span>Endereços</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <span>Transações Validadas</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+            <span>Transações Pendentes</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-0.5 bg-blue-500"></div>
+            <span>Fluxo</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-0.5 bg-red-500"></div>
+            <span>▶ Validação</span>
+          </div>
+        </div>
       </div>
     </div>
   );
