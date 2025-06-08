@@ -16,6 +16,13 @@ interface Transaction {
   hash: string;
 }
 
+// Extend Transaction to be compatible with D3 SimulationNodeDatum
+interface SimulationTransaction extends Transaction, d3.SimulationNodeDatum {
+  x?: number;
+  y?: number;
+  z?: number;
+}
+
 interface GraphNode {
   id: string;
   x: number;
@@ -29,6 +36,12 @@ interface GraphLink {
   source: string;
   target: string;
   type: 'transaction' | 'validation';
+}
+
+// D3 link interface for force simulation
+interface SimulationLink extends d3.SimulationLinkDatum<SimulationTransaction> {
+  source: string | SimulationTransaction;
+  target: string | SimulationTransaction;
 }
 
 interface TransactionNodeProps {
@@ -135,7 +148,7 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
       addressSet.add(tx.to);
     });
 
-    // Create address nodes
+    // Create address nodes positioned in a circle
     const addresses = Array.from(addressSet);
     addresses.forEach((address, index) => {
       const angle = (index / addresses.length) * Math.PI * 2;
@@ -150,27 +163,57 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
       });
     });
 
-    // Create transaction nodes using D3 force simulation
-    const simulation = d3.forceSimulation(transactions)
-      .force('link', d3.forceLink(transactions).id((d: any) => d.id).distance(2))
+    // Convert transactions to simulation-compatible format
+    const simulationTransactions: SimulationTransaction[] = transactions.map(tx => ({
+      ...tx,
+      x: undefined,
+      y: undefined,
+      z: undefined
+    }));
+
+    // Create links for D3 force simulation
+    const simulationLinks: SimulationLink[] = [];
+    transactions.forEach(tx => {
+      // Create validation links between transactions
+      tx.validates.forEach(validatedTxId => {
+        if (transactions.find(t => t.id === validatedTxId)) {
+          simulationLinks.push({
+            source: tx.id,
+            target: validatedTxId
+          });
+        }
+      });
+    });
+
+    // Create and run D3 force simulation for 2D positioning
+    const simulation = d3.forceSimulation(simulationTransactions)
+      .force('link', d3.forceLink(simulationLinks).id((d: any) => d.id).distance(2))
       .force('charge', d3.forceManyBody().strength(-50))
-      .force('center', d3.forceCenter(0, 2, 0))
+      .force('center', d3.forceCenter(0, 2)) // Only 2 arguments for 2D center
       .force('collision', d3.forceCollide().radius(0.5))
       .stop();
 
-    // Run simulation
+    // Run simulation to completion
     for (let i = 0; i < 300; ++i) simulation.tick();
 
-    // Add transaction nodes
-    transactions.forEach(tx => {
-      const node = simulation.nodes().find((n: any) => n.id === tx.id) as any;
+    // Add transaction nodes with 3D positioning
+    simulationTransactions.forEach(tx => {
       nodeMap.set(tx.id, {
         id: tx.id,
-        x: node.x || Math.random() * 4 - 2,
-        y: node.y || Math.random() * 4 + 1,
-        z: node.z || Math.random() * 4 - 2,
+        x: tx.x || Math.random() * 4 - 2,
+        y: (tx.y || 0) + 2, // Offset Y to separate from addresses
+        z: Math.random() * 4 - 2, // Add random Z for 3D effect
         type: 'transaction',
-        data: tx
+        data: {
+          id: tx.id,
+          from: tx.from,
+          to: tx.to,
+          amount: tx.amount,
+          timestamp: tx.timestamp,
+          validates: tx.validates,
+          validated: tx.validated,
+          hash: tx.hash
+        }
       });
 
       // Create links from transaction to addresses
