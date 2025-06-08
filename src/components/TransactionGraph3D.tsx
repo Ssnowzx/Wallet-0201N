@@ -72,14 +72,19 @@ const TransactionNode: React.FC<TransactionNodeProps> = ({ node, isSelected, onC
     return Math.max(0.1, Math.min(0.4, tx.amount / 50));
   }, [node]);
 
+  const handleClick = (event: any) => {
+    event.stopPropagation();
+    onClick(node.id);
+  };
+
   return (
     <group position={[node.x, node.y, node.z]}>
-      <Sphere
+      <mesh
         ref={meshRef}
-        args={[nodeSize, 16, 16]}
-        onClick={() => onClick(node.id)}
+        onClick={handleClick}
         scale={isSelected ? 1.5 : 1}
       >
+        <sphereGeometry args={[nodeSize, 16, 16]} />
         <meshPhongMaterial 
           color={nodeColor} 
           transparent 
@@ -87,7 +92,7 @@ const TransactionNode: React.FC<TransactionNodeProps> = ({ node, isSelected, onC
           emissive={isSelected ? nodeColor : '#000000'}
           emissiveIntensity={isSelected ? 0.2 : 0}
         />
-      </Sphere>
+      </mesh>
       
       {node.type === 'transaction' && (
         <Text
@@ -137,6 +142,8 @@ interface Graph3DSceneProps {
 
 const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode, onNodeSelect }) => {
   const { nodes, links } = useMemo(() => {
+    console.log('Processing transactions for 3D graph:', transactions.length);
+    
     // Create nodes for transactions and addresses
     const nodeMap = new Map<string, GraphNode>();
     const linkArray: GraphLink[] = [];
@@ -189,7 +196,7 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
     const simulation = d3.forceSimulation(simulationTransactions)
       .force('link', d3.forceLink(simulationLinks).id((d: any) => d.id).distance(2))
       .force('charge', d3.forceManyBody().strength(-50))
-      .force('center', d3.forceCenter(0, 2)) // Only 2 arguments for 2D center
+      .force('center', d3.forceCenter(0, 2))
       .force('collision', d3.forceCollide().radius(0.5))
       .stop();
 
@@ -201,8 +208,8 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
       nodeMap.set(tx.id, {
         id: tx.id,
         x: tx.x || Math.random() * 4 - 2,
-        y: (tx.y || 0) + 2, // Offset Y to separate from addresses
-        z: Math.random() * 4 - 2, // Add random Z for 3D effect
+        y: (tx.y || 0) + 2,
+        z: Math.random() * 4 - 2,
         type: 'transaction',
         data: {
           id: tx.id,
@@ -239,6 +246,8 @@ const Graph3DScene: React.FC<Graph3DSceneProps> = ({ transactions, selectedNode,
         }
       });
     });
+
+    console.log('Generated nodes:', nodeMap.size, 'links:', linkArray.length);
 
     return {
       nodes: Array.from(nodeMap.values()),
@@ -309,6 +318,8 @@ const TransactionGraph3D: React.FC<TransactionGraph3DProps> = ({ transactions })
       data: { address: selectedNode }
     };
   }, [selectedNode, transactions]);
+
+  console.log('TransactionGraph3D rendering with', transactions.length, 'transactions');
 
   return (
     <div className="h-full w-full relative">
