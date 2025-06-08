@@ -329,9 +329,6 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                     <Send className="w-4 h-4 mr-2" />
                     Enviar 0201N
                   </CardTitle>
-                  <CardDescription className="text-xs">
-                    Cada transação valida duas transações anteriores no Tangle (prioriza usuários reais)
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-1">
@@ -468,7 +465,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                 Rede 0201N Tangle (DAG)
               </CardTitle>
               <CardDescription className="text-xs">
-                Estatísticas em tempo real (atualiza automaticamente)
+                Estatísticas em tempo real
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -1,4 +1,5 @@
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -130,7 +131,7 @@
   animation-delay: 15s;
 }
 
-/* Efeito de luz neon azul rotativo para a carteira */
+/* Efeito de luz neon azul rotativo APRIMORADO para a carteira */
 .wallet-container {
   position: relative;
 }
@@ -138,45 +139,45 @@
 .wallet-container::before {
   content: '';
   position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    rgba(59, 130, 246, 0.4) 90deg,
-    rgba(147, 197, 253, 0.6) 180deg,
-    rgba(59, 130, 246, 0.4) 270deg,
+    rgba(59, 130, 246, 0.8) 90deg,
+    rgba(147, 197, 253, 1) 180deg,
+    rgba(59, 130, 246, 0.8) 270deg,
     transparent 360deg
   );
   border-radius: inherit;
   z-index: -1;
-  animation: rotate-glow 3s linear infinite;
-  opacity: 0.7;
-  filter: blur(1px);
+  animation: rotate-glow 2s linear infinite;
+  opacity: 0.9;
+  filter: blur(2px);
 }
 
 .wallet-container::after {
   content: '';
   position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
   background: conic-gradient(
     from 180deg,
     transparent 0deg,
-    rgba(59, 130, 246, 0.2) 90deg,
-    rgba(147, 197, 253, 0.4) 180deg,
-    rgba(59, 130, 246, 0.2) 270deg,
+    rgba(59, 130, 246, 0.6) 90deg,
+    rgba(147, 197, 253, 0.8) 180deg,
+    rgba(59, 130, 246, 0.6) 270deg,
     transparent 360deg
   );
   border-radius: inherit;
   z-index: -1;
-  animation: rotate-glow 3s linear infinite reverse;
-  opacity: 0.5;
-  filter: blur(0.5px);
+  animation: rotate-glow 2s linear infinite reverse;
+  opacity: 0.8;
+  filter: blur(1px);
 }
 
 @keyframes rotate-glow {
@@ -202,3 +203,4 @@
     opacity: 0.4;
   }
 }
+
