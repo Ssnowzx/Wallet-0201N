@@ -244,7 +244,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
         <div className="orb"></div>
       </div>
 
-      <div className="max-w-sm mx-auto min-h-screen bg-white/20 backdrop-blur-md shadow-2xl">
+      <div className="max-w-sm mx-auto min-h-screen wallet-container bg-white/20 backdrop-blur-md shadow-2xl">
         <div className="bg-white/30 backdrop-blur-md border-b border-white/20 p-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
@@ -453,7 +453,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-2">
-                  <div className="h-80 w-full">
+                  <div className="h-[520px] w-full">
                     <TransactionGraph2D transactions={allTransactions} />
                   </div>
                 </CardContent>

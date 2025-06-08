@@ -48,8 +48,8 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
         type: 'transaction',
         data: tx,
         // Arrange in a more structured way for Tangle visualization
-        x: 50 + (index % 8) * 45,
-        y: 50 + Math.floor(index / 8) * 60
+        x: 100 + (index % 12) * 80,
+        y: 100 + Math.floor(index / 12) * 100
       };
       nodeMap.set(tx.id, node);
     });
@@ -79,8 +79,8 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = 400;
-    const height = 300;
+    const width = 800;
+    const height = 600;
 
     // Create arrow markers for validation links
     svg.append("defs").selectAll("marker")
@@ -99,10 +99,10 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
 
     // Create force simulation for better positioning
     const simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(80).strength(0.8))
-      .force('charge', d3.forceManyBody().strength(-200))
+      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(120).strength(0.6))
+      .force('charge', d3.forceManyBody().strength(-300))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(25))
+      .force('collision', d3.forceCollide().radius(30))
       .force('x', d3.forceX(width / 2).strength(0.1))
       .force('y', d3.forceY(height / 2).strength(0.1));
 
@@ -123,7 +123,7 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
       .attr("class", "node")
       .attr("r", d => {
         const tx = d.data as Transaction;
-        return Math.max(8, Math.min(15, tx.amount / 5));
+        return Math.max(10, Math.min(18, tx.amount / 4));
       })
       .attr("fill", d => {
         const tx = d.data as Transaction;
@@ -158,7 +158,7 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
       .attr("class", "node-label")
       .attr("text-anchor", "middle")
       .attr("dy", ".35em")
-      .attr("font-size", "10px")
+      .attr("font-size", "11px")
       .attr("font-weight", "bold")
       .attr("fill", "white")
       .attr("pointer-events", "none")
@@ -221,8 +221,8 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
         <svg
           ref={svgRef}
           width="100%"
-          height="240"
-          viewBox="0 0 400 300"
+          height="480"
+          viewBox="0 0 800 600"
           className="border border-gray-200 rounded-lg bg-gradient-to-br from-blue-50 to-purple-50"
         />
         
