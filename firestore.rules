@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Regras para a coleção de usuários
+    match /users/{userId} {
+      // Permite que o dono do documento (usuario autenticado) leia e escreva seus proprios dados
+      // A Cloud Function tambem pode escrever aqui pois usa o Admin SDK (privilegiado)
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Permite que QUALQUER usuario (autenticado ou nao) *liste* e *leia* documentos na colecao 'users'
+      // Isso e necessario para que o frontend possa obter a contagem total de usuarios.
+      allow read, list: if true; // Permite leitura publica da colecao 'users'
+    }
+
+    // Regras para a nova colecao de transacoes globais
+    match /globalTransactions/{transactionId} {
+      // Permite que QUALQUER usuario (autenticado ou nao) leia e liste as transacoes globais.
+      // Isso e necessario para popular o grafo 2D e calcular as estatisticas globais.
+      // As escritas (criacao) nesta colecao serao feitas APENAS pela Cloud Function (Admin SDK).
+      allow read, list: if true; // Permite leitura publica da colecao 'globalTransactions'
+    }
+
+    // Adicione outras regras para outras colecoes se h existirem e forem necessarias
+  }
+}

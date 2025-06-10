@@ -9,7 +9,8 @@ interface Transaction {
   amount: number;
   timestamp: number;
   validates: string[];
-  validated: boolean;
+  // Changed 'validated' to 'isConfirmedForStats' to match the data structure from useRealTimeStats hook
+  isConfirmedForStats: boolean; 
   hash: string;
 }
 
@@ -127,7 +128,8 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
       })
       .attr("fill", d => {
         const tx = d.data as Transaction;
-        return tx.validated ? '#10B981' : '#F59E0B';
+        // Use isConfirmedForStats to determine color
+        return tx.isConfirmedForStats ? '#10B981' : '#F59E0B';
       })
       .attr("stroke", d => selectedNode === d.id ? '#000' : '#fff')
       .attr("stroke-width", d => selectedNode === d.id ? 3 : 2)
@@ -205,7 +207,8 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
           <div className="space-y-1 text-xs">
             <p><strong>ID:</strong> {(selectedNodeInfo.data as Transaction).id.slice(0, 12)}...</p>
             <p><strong>Valor:</strong> {(selectedNodeInfo.data as Transaction).amount} 0201N</p>
-            <p><strong>Status:</strong> {(selectedNodeInfo.data as Transaction).validated ? '✅ Validada' : '⏳ Pendente'}</p>
+            {/* Use isConfirmedForStats in the details display */}
+            <p><strong>Status:</strong> {(selectedNodeInfo.data as Transaction).isConfirmedForStats ? '✅ Validada' : '⏳ Pendente'}</p>
             <p><strong>Valida:</strong> {(selectedNodeInfo.data as Transaction).validates.length} transação(ões)</p>
           </div>
           <button 

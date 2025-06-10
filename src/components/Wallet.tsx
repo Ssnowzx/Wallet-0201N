@@ -7,140 +7,150 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Copy, Send, LogOut, Wallet as WalletIcon, Activity, Eye, EyeOff, Network } from 'lucide-react';
+
+// Importar db e funções do Firestore
+import { db } from "@/firebaseConfig";
+import { doc, onSnapshot } from "firebase/firestore";
+
+// Importar funções do Firebase Functions SDK para chamar a função backend
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { app } from "@/firebaseConfig"; // Importar a instância do app Firebase
+
+// Inicializar Firebase Functions para o cliente
+const functions = getFunctions(app);
+// Referência para a Cloud Function processTransaction
+const processTransactionCallable = httpsCallable(functions, 'processTransaction');
+
+
 import { useRealTimeStats } from '@/hooks/useRealTimeStats';
-import { validateTwoTransactionsWithPriority } from '@/utils/transactionPriority';
+// import { validateTwoTransactionsWithPriority } from '@/utils/transactionPriority'; // Removido: Lógica de validação será no backend
 import TransactionGraph2D from './TransactionGraph2D';
 
+// Atualizar a interface Transaction para refletir os dados do Firestore/hook
+// Deve ser consistente com a interface no useRealTimeStats.ts
 interface Transaction {
   id: string;
-  from: string;
-  to: string;
+  from: string; // Endereço do remetente
+  to: string;   // Endereço do destinatário
   amount: number;
-  timestamp: number;
-  validates: string[];
-  validated: boolean;
+  timestamp: number; // Timestamp de criação
+  validates: string[]; // IDs das transações validadas por esta
+  // Este campo vem calculado do hook useRealTimeStats baseado em validatedBy
+  isConfirmedForStats: boolean;
   hash: string;
+  validatedBy: string[]; // IDs de transações que validaram ESTA transação
+}
+
+interface UserData {
+  email: string;
+  balance: number;
+  address: string;
+  // O histórico do usuário agora armazena a transação GLOBAL completa ou uma referência a ela.
+  // Assumimos que a Cloud Function processTransaction salva o objeto Transaction global no array do usuário.
+  transactions: Transaction[];
 }
 
 interface WalletProps {
-  username: string;
+  userId: string;
   onLogout: () => void;
 }
 
-const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
-  const [userInfo, setUserInfo] = useState<any>(null);
+// Removidas todas as funções e estados relacionados à simulação local
+// (safelyReadTransactionsFromLocalStorage, allTransactions, generatePendingTransactions, checkAndRefillPendingTransactions)
+
+
+const Wallet: React.FC<WalletProps> = ({ userId, onLogout }) => {
+  const [userInfo, setUserInfo] = useState<UserData | null>(null);
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  // allTransactions local removido. Agora usamos globalTransactions do hook.
   const [isLoading, setIsLoading] = useState(false);
   const [showBalance, setShowBalance] = useState(true);
-  const stats = useRealTimeStats();
 
+  // O hook useRealTimeStats agora fornece as estatísticas e a lista completa
+  // de transações globais do Firestore.
+  const { stats, globalTransactions } = useRealTimeStats();
+
+
+  // --- Lógica de Carregamento e Atualização de Dados do Usuário do Firestore ---
+  // Esta lógica busca os dados específicos do usuário logado (saldo, histórico)
   useEffect(() => {
-    initializePendingTransactions();
-    loadUserData();
-    loadAllTransactions();
-  }, [username]);
+    if (!userId) return;
 
-  useEffect(() => {
-    checkAndRefillPendingTransactions();
-  }, [allTransactions]);
+    const userDocRef = doc(db, "users", userId);
 
-  const initializePendingTransactions = () => {
-    const existingTransactions = JSON.parse(localStorage.getItem('iotaTransactions') || '[]');
-    if (existingTransactions.length === 0) {
-      generatePendingTransactions(100);
-    }
-  };
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const userData = docSnap.data() as UserData;
+        // Mapear as transações do histórico do usuário para a interface Transaction,
+        // garantindo que isConfirmedForStats seja calculado se validatedBy existir.
+         const userTransactions = (userData.transactions || []).map(tx => {
+           // Garante que validatedBy seja sempre um array para evitar erros
+           const validatedBy = Array.isArray(tx.validatedBy) ? tx.validatedBy : [];
+           return {
+              ...tx,
+              validatedBy: validatedBy, // Use o array garantido
+              // Recalcular isConfirmedForStats localmente para o histórico do usuário
+              isConfirmedForStats: validatedBy.length >= 2,
+           } as Transaction;
+         });
 
-  const generatePendingTransactions = (count: number) => {
-    const transactions: Transaction[] = [];
-    const baseTime = Date.now() - (count * 60000);
 
-    for (let i = 0; i < count; i++) {
-      const transaction: Transaction = {
-        id: `pending_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        from: `0x${Math.random().toString(16).substr(2, 40)}`,
-        to: `0x${Math.random().toString(16).substr(2, 40)}`,
-        amount: Math.round((Math.random() * 50 + 1) * 100) / 100,
-        timestamp: baseTime + (i * 60000),
-        validates: [],
-        validated: false,
-        hash: `pending_hash_${Math.random().toString(16).substr(2, 16)}`
-      };
-      transactions.push(transaction);
-    }
-
-    const existingTransactions = JSON.parse(localStorage.getItem('iotaTransactions') || '[]');
-    const updatedTransactions = [...existingTransactions, ...transactions];
-    localStorage.setItem('iotaTransactions', JSON.stringify(updatedTransactions));
-    setAllTransactions(updatedTransactions);
-  };
-
-  const checkAndRefillPendingTransactions = () => {
-    const pendingCount = allTransactions.filter(tx => !tx.validated).length;
-    if (pendingCount <= 20 && pendingCount > 0) {
-      console.log(`Transações pendentes baixas (${pendingCount}), gerando mais 100...`);
-      generatePendingTransactions(100);
+        setUserInfo({...userData, transactions: userTransactions});
+        console.log("Dados do usuário atualizados do Firestore.");
+      } else {
+        console.error("Documento do usuário não encontrado no Firestore para ID:", userId);
+        setUserInfo(null);
+      }
+    }, (error) => {
+      console.error("Erro ao carregar dados do usuário do Firestore:", error);
       toast({
-        title: "Rede atualizada",
-        description: "100 novas transações pendentes foram adicionadas ao Tangle"
+        title: "Erro",
+        description: "Falha ao carregar dados do usuário.",
+        variant: "destructive"
       });
-    }
-  };
+      setUserInfo(null);
+    });
 
-  const loadUserData = () => {
-    const users = JSON.parse(localStorage.getItem('iotaUsers') || '{}');
-    setUserInfo(users[username]);
-  };
+    return () => unsubscribe();
+  }, [userId]);
 
-  const loadAllTransactions = () => {
-    const transactions = JSON.parse(localStorage.getItem('iotaTransactions') || '[]');
-    setAllTransactions(transactions);
-  };
-
-  const generateTransactionId = () => {
-    return `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  };
-
-  const generateHash = (transaction: any) => {
-    const data = `${transaction.from}${transaction.to}${transaction.amount}${transaction.timestamp}`;
-    return `hash_${btoa(data).slice(0, 16)}`;
-  };
+  // Removidos: Todos os useEffects e funções relacionados à simulação local do Tangle/Grafo/Stats
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
       title: "Copiado!",
-      description: "Endereço copiado para a área de transferência"
+      description: "Endereço copiado para a área de transferência",
     });
   };
 
+  // --- Lógica de Envio de Transação CHAMANDO A CLOUD FUNCTION (REAL) ---
   const handleSendTransaction = async () => {
+    if (!userInfo) {
+       toast({
+        title: "Erro",
+        description: "Informações do usuário não carregadas.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!toAddress || !amount) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos",
         variant: "destructive"
       });
-      // Auto-dismiss after 1 second
-      setTimeout(() => {
-        // The toast will be auto-dismissed by the timeout in use-toast
-      }, 1000);
       return;
     }
 
-    // Check if trying to send to own address
     if (toAddress === userInfo.address) {
       toast({
         title: "Erro",
         description: "Não é possível enviar transações para seu próprio endereço",
         variant: "destructive"
       });
-      // Auto-dismiss after 1 second
-      setTimeout(() => {
-        // The toast will be auto-dismissed by the timeout in use-toast
-      }, 1000);
       return;
     }
 
@@ -151,92 +161,72 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
         description: "Valor inválido ou saldo insuficiente",
         variant: "destructive"
       });
-      // Auto-dismiss after 1 second
-      setTimeout(() => {
-        // The toast will be auto-dismissed by the timeout in use-toast
-      }, 1000);
       return;
     }
 
     setIsLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log("Chamando Cloud Function processTransaction com:", { toAddress, amount: amountNum });
 
-      const validatedTxs = validateTwoTransactionsWithPriority(allTransactions);
+      // --- Chamar a Cloud Function para processar a transação ---
+      const result = await processTransactionCallable({ toAddress, amount: amountNum });
+      console.log("Resultado da Cloud Function:", result.data);
 
-      const newTransaction: Transaction = {
-        id: generateTransactionId(),
-        from: userInfo.address,
-        to: toAddress,
-        amount: amountNum,
-        timestamp: Date.now(),
-        validates: validatedTxs,
-        validated: false,
-        hash: ''
-      };
+      // A Cloud Function já atualiza a coleção globalTransactions no Firestore.
+      // O hook useRealTimeStats e os listeners onSnapshot (para usuário e globalTransactions)
+      // agora tratarão a atualização da UI (saldo, histórico, estatísticas e grafo).
 
-      newTransaction.hash = generateHash(newTransaction);
-
-      const updatedTransactions = allTransactions.map(tx => 
-        validatedTxs.includes(tx.id) ? { ...tx, validated: true } : tx
-      );
-
-      const finalTransactions = [...updatedTransactions, newTransaction];
-
-      const users = JSON.parse(localStorage.getItem('iotaUsers') || '{}');
-      users[username].balance -= amountNum;
-      
-      const recipient = Object.keys(users).find(user => users[user].address === toAddress);
-      if (recipient) {
-        users[recipient].balance += amountNum;
-      }
-
-      localStorage.setItem('iotaUsers', JSON.stringify(users));
-      localStorage.setItem('iotaTransactions', JSON.stringify(finalTransactions));
-
-      loadUserData();
-      loadAllTransactions();
-
-      const successToast = toast({
-        title: "Transação enviada! ✅",
-        description: `${validatedTxs.length} transações validadas (priorizando usuários reais)`
+      toast({
+        title: "Transação Enviada para Processamento! ✅",
+        description: "A transação está sendo processada na rede.", // Modified line
       });
-
-      // Auto-dismiss success toast after 1 second
-      setTimeout(() => {
-        successToast.dismiss();
-      }, 1000);
 
       setToAddress('');
       setAmount('');
-    } catch (error) {
+
+    } catch (error: any) {
+      console.error("Erro ao chamar Cloud Function ou processar resposta:", error);
+      let errorMessage = "Falha ao enviar transação.";
+
+      // Tentar extrair mensagem de erro da Cloud Function
+      if (error.code && error.message) {
+         errorMessage = `Erro do Backend: ${error.message}`;
+         // Você pode adicionar tratamento específico para error.code aqui (e.g., 'failed-precondition', 'not-found')
+      } else if (error.message) {
+         errorMessage = `Erro: ${error.message}`;
+      }
+
       toast({
-        title: "Erro",
-        description: "Falha ao processar transação",
+        title: "Erro na Transação",
+        description: errorMessage,
         variant: "destructive"
       });
-      // Auto-dismiss after 1 second
-      setTimeout(() => {
-        // The toast will be auto-dismissed by the timeout in use-toast
-      }, 1000);
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
+  // --- Lógica de Filtragem de Transações para o Histórico do Usuário (REAL do Firestore) ---
   const getUserTransactions = () => {
-    return allTransactions.filter(tx => 
-      tx.from === userInfo?.address || tx.to === userInfo?.address
-    );
+    return userInfo?.transactions || [];
   };
 
+  // Renderiza um estado de carregamento enquanto os dados do usuário não são carregados
   if (!userInfo) {
-    return <div>Carregando...</div>;
+    // Garante que o retorno condicional seja um JSX válido e completo
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            Carregando dados do usuário...
+        </div>
+    );
   }
 
+  // --- Renderização do Componente Wallet ---
+  // Início do bloco JSX principal retornado pelo componente
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Orbs flutuantes para efeito visual */}
       <div className="floating-orbs">
         <div className="orb"></div>
         <div className="orb"></div>
@@ -244,7 +234,9 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
         <div className="orb"></div>
       </div>
 
+      {/* Container principal da carteira */}
       <div className="max-w-sm mx-auto min-h-screen wallet-container bg-white/20 backdrop-blur-md shadow-2xl">
+        {/* Header da carteira */}
         <div className="bg-white/30 backdrop-blur-md border-b border-white/20 p-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
@@ -253,23 +245,27 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
               </div>
               <div>
                 <h1 className="text-sm font-bold text-gray-900">CC Wallet</h1>
-                <p className="text-xs text-gray-600">{username}</p>
+                <p className="text-xs text-gray-600">{userInfo.email || 'Usuário'}</p>
               </div>
             </div>
+            {/* Botão de logout */}
             <Button variant="ghost" size="sm" onClick={onLogout}>
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
+        {/* Conteúdo principal com saldo, tabs e estatísticas */}
         <div className="p-4 space-y-4">
+          {/* Card do Saldo */}
           <Card className="glass-effect border-white/30 shadow-lg">
             <CardContent className="p-4">
               <div className="text-center space-y-3">
+                {/* Exibição do Saldo com toggle de privacidade */}
                 <div className="flex items-center justify-center space-x-2">
                   <p className="text-xs text-gray-600">Saldo Total</p>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={() => setShowBalance(!showBalance)}
                     className="h-5 w-5 p-0"
@@ -277,11 +273,11 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                     {showBalance ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                   </Button>
                 </div>
-                
+
                 <div className="space-y-1">
                   {showBalance ? (
                     <div className="text-3xl font-bold text-gray-900">
-                      {userInfo.balance.toFixed(2)}
+                      {userInfo.balance.toFixed(2)} {/* Exibe o saldo REAL do usuário logado */}
                     </div>
                   ) : (
                     <div className="text-3xl font-bold text-gray-900">
@@ -293,16 +289,18 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                   </Badge>
                 </div>
 
+                {/* Endereço da Carteira */}
                 <div className="mt-4 p-3 bg-white/50 rounded-lg">
                   <Label className="text-xs font-medium text-gray-600 block mb-1">
                     Endereço da Carteira
                   </Label>
                   <div className="flex items-center justify-between">
                     <code className="text-xs text-gray-800 flex-1 truncate">
-                      {userInfo.address}
+                      {userInfo.address} {/* Exibe o endereço REAL do usuário logado */}
                     </code>
-                    <Button 
-                      size="sm" 
+                    {/* Botão para copiar endereço */}
+                    <Button
+                      size="sm"
                       variant="ghost"
                       onClick={() => copyToClipboard(userInfo.address)}
                       className="ml-2 h-6 w-6 p-0"
@@ -315,6 +313,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
             </CardContent>
           </Card>
 
+          {/* Tabs para Enviar, Histórico e Grafo */}
           <Tabs defaultValue="send" className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-10">
               <TabsTrigger value="send" className="text-xs">Enviar</TabsTrigger>
@@ -322,6 +321,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
               <TabsTrigger value="graph" className="text-xs">Grafo 2D</TabsTrigger>
             </TabsList>
 
+            {/* Conteúdo da aba Enviar */}
             <TabsContent value="send" className="mt-4">
               <Card className="glass-effect border-white/30 shadow-lg">
                 <CardHeader className="pb-3">
@@ -331,19 +331,21 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {/* Campo Endereço de destino */}
                   <div className="space-y-1">
                     <Label htmlFor="to-address" className="text-xs font-medium">
                       Endereço de destino
                     </Label>
                     <Input
                       id="to-address"
-                      placeholder="0x..."
+                      placeholder="0x... (Endereço de outra carteira)"
                       value={toAddress}
                       onChange={(e) => setToAddress(e.target.value)}
                       className="font-mono text-xs h-10"
                     />
                   </div>
-                  
+
+                  {/* Campo Quantidade */}
                   <div className="space-y-1">
                     <Label htmlFor="amount" className="text-xs font-medium">
                       Quantidade (0201N)
@@ -364,36 +366,40 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                     </p>
                   </div>
 
-                  <Button 
+                  {/* Botão Enviar Transação */}
+                  <Button
                     onClick={handleSendTransaction}
-                    disabled={isLoading}
+                    disabled={isLoading || !userInfo}
                     className="w-full h-10 iota-gradient text-white font-semibold text-sm"
                   >
                     {isLoading ? "Processando..." : "Enviar Transação"}
                   </Button>
 
+                  {/* Mensagem de processamento */}
                   {isLoading && (
                     <div className="text-center text-xs text-muted-foreground p-2 bg-blue-50 rounded-lg">
-                      Executando Proof of Work e validando transações no Tangle...
+                      Processando transação no Tangle (via Cloud Function)...
                     </div>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* Conteúdo da aba Histórico */}
             <TabsContent value="history" className="mt-4">
               <Card className="glass-effect border-white/30 shadow-lg">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Transações</CardTitle>
                   <CardDescription className="text-xs">
-                    Histórico na rede 0201N Tangle (DAG)
+                    Histórico na rede 0201N Tangle (DAG) - Dados reais do Firestore
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/* Lista de transações do usuário (REAL do Firestore) */}
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {getUserTransactions().length === 0 ? (
                       <div className="text-center text-muted-foreground py-6 text-xs">
-                        Nenhuma transação encontrada
+                        Nenhuma transação encontrada para este usuário
                       </div>
                     ) : (
                       getUserTransactions().map((tx) => (
@@ -411,12 +417,14 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                               <div className={`font-bold text-xs ${tx.from === userInfo.address ? 'text-red-600' : 'text-green-600'}`}>
                                 {tx.from === userInfo.address ? '-' : '+'}{tx.amount} 0201N
                               </div>
-                              <Badge variant={tx.validated ? "default" : "secondary"} className="text-xs">
-                                {tx.validated ? 'Validado' : 'Pendente'}
+                              {/* Badge Validado/Pendente - Agora usa isConfirmedForStats do hook/Firestore data */}
+                              <Badge variant={tx.isConfirmedForStats ? "default" : "secondary"} className="text-xs">
+                                {tx.isConfirmedForStats ? 'Validado' : 'Pendente'}
                               </Badge>
                             </div>
                           </div>
-                          
+
+                          {/* Detalhes da transação (Hash, Validações - agora do Firestore) */}
                           <div className="text-xs space-y-1 pt-1 border-t border-white/20">
                             <div className="flex items-center justify-between">
                               <span className="text-gray-600">Hash:</span>
@@ -424,9 +432,15 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                                 {tx.hash}
                               </code>
                             </div>
-                            {tx.validates.length > 0 && (
+                             {/* Mostrar Validou e Validado Por com base nos dados do Firestore */}
+                            {tx.validates && tx.validates.length > 0 && (
                               <div className="text-gray-600">
                                 Validou: {tx.validates.length} transação(ões)
+                              </div>
+                            )}
+                             {tx.validatedBy && tx.validatedBy.length > 0 && (
+                              <div className="text-gray-600">
+                                Validado Por: {tx.validatedBy.length} transação(ões)
                               </div>
                             )}
                           </div>
@@ -438,6 +452,7 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
               </Card>
             </TabsContent>
 
+            {/* Conteúdo da aba Grafo 2D */}
             <TabsContent value="graph" className="mt-4">
               <Card className="glass-effect border-white/30 shadow-lg">
                 <CardHeader className="pb-3">
@@ -446,18 +461,21 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                     Visualização 2D do Tangle
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Grafo 2D representando transações e validações na rede 0201N
+                    Grafo 2D representando transações e validações na rede 0201N (Dados do Firestore)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-2">
+                  {/* Componente do grafo, AGORA USANDO A LISTA GLOBAL DO FIRESTORE */}
                   <div className="h-[520px] w-full">
-                    <TransactionGraph2D transactions={allTransactions} />
+                    {/* Passa a lista globalTransactions do hook para o componente do grafo */}
+                    <TransactionGraph2D transactions={globalTransactions} />
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
 
+          {/* Card das Estatísticas em Tempo Real */}
           <Card className="glass-effect border-white/30 shadow-lg">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center text-base">
@@ -465,28 +483,33 @@ const Wallet: React.FC<WalletProps> = ({ username, onLogout }) => {
                 Rede 0201N Tangle (DAG)
               </CardTitle>
               <CardDescription className="text-xs">
-                Estatísticas em tempo real
+                Estatísticas em tempo real (Dados do Firestore)
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Exibição das estatísticas - AGORA USANDO stats.propriedade do hook (do Firestore) */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="text-center p-3 bg-white/40 rounded-lg shadow-sm">
+                  {/* Renderiza stats.totalTransactions, que vem do Firestore */}
                   <div className="text-lg font-bold text-primary">{stats.totalTransactions}</div>
                   <div className="text-xs text-muted-foreground">Total</div>
                 </div>
                 <div className="text-center p-3 bg-white/40 rounded-lg shadow-sm">
+                   {/* Renderiza stats.validatedTransactions, que vem do Firestore */}
                   <div className="text-lg font-bold text-green-600">
                     {stats.validatedTransactions}
                   </div>
                   <div className="text-xs text-muted-foreground">Validadas</div>
                 </div>
                 <div className="text-center p-3 bg-white/40 rounded-lg shadow-sm">
+                  {/* Renderiza stats.pendingTransactions, que vem do Firestore */}
                   <div className="text-lg font-bold text-orange-600">
                     {stats.pendingTransactions}
                   </div>
                   <div className="text-xs text-muted-foreground">Pendentes</div>
                 </div>
                 <div className="text-center p-3 bg-white/40 rounded-lg shadow-sm">
+                  {/* Renderiza stats.totalUsers, que vem do Firestore */}
                   <div className="text-lg font-bold text-purple-600">
                     {stats.totalUsers}
                   </div>

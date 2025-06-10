@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,22 +6,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 
+// Importar auth e db do nosso arquivo de configuração
+import { auth, db } from "@/firebaseConfig";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+
 interface LoginFormProps {
-  onLogin: (username: string) => void;
+  onLogin: (userId: string) => void; // Mudamos para passar o userId do Firebase
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState(''); // Mudamos para email
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent, isSignup: boolean = false) => {
     e.preventDefault();
-    
-    if (!username || !password) {
+
+    // Usaremos o campo "Nome" (email) e Senha
+    if (!email || !password) {
       toast({
         title: "Erro",
-        description: "Por favor, preencha todos os campos",
+        description: "Por favor, preencha todos os campos (Nome/Email e Senha)",
         variant: "destructive"
       });
       return;
@@ -31,57 +36,77 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     setIsLoading(true);
 
     try {
-      const users = JSON.parse(localStorage.getItem('iotaUsers') || '{}');
-      
       if (isSignup) {
-        if (users[username]) {
-          toast({
-            title: "Erro",
-            description: "Nome de usuário já existe",
-            variant: "destructive"
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        // Criar novo usuário com 100 tokens iniciais
-        users[username] = {
-          password,
+        // Lógica de Cadastro com Firebase
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Criar documento do usuário no Firestore com saldo inicial
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email, // Salva o email no Firestore
           balance: 100,
           address: `0x${Math.random().toString(16).substr(2, 40)}`,
           transactions: []
-        };
-        
-        localStorage.setItem('iotaUsers', JSON.stringify(users));
-        
+        });
+
         toast({
           title: "Conta criada!",
           description: "Você ganhou 100 tokens 0201N iniciais!"
         });
-        
-        onLogin(username);
+
+        onLogin(user.uid);
+
       } else {
-        if (!users[username] || users[username].password !== password) {
-          toast({
-            title: "Erro",
-            description: "Nome de usuário ou senha incorretos",
-            variant: "destructive"
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        onLogin(username);
+        // Lógica de Login com Firebase
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        toast({
+          title: "Sucesso!",
+          description: "Login realizado com sucesso."
+        });
+
+        onLogin(user.uid);
       }
-    } catch (error) {
+    } catch (error: any) {
+      let errorMessage = "Ocorreu um erro interno";
+
+      // Tratamento de erros específicos do Firebase Authentication
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = "O nome/email fornecido já está em uso.";
+          break;
+        case 'auth/invalid-email':
+          errorMessage = "O formato do nome/email é inválido.";
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = "Operação não permitida. Contate o administrador.";
+          break;
+        case 'auth/weak-password':
+          errorMessage = "A senha é muito fraca.";
+          break;
+        case 'auth/user-disabled':
+          errorMessage = "Este usuário foi desativado.";
+          break;
+        case 'auth/user-not-found':
+          errorMessage = "Nome/email não encontrado.";
+          break;
+        case 'auth/wrong-password':
+          errorMessage = "Senha incorreta.";
+          break;
+        default:
+          console.error("Firebase Auth Error:", error.message);
+          errorMessage = `Erro: ${error.message}`; // Exibe a mensagem de erro padrão do Firebase
+      }
+
       toast({
-        title: "Erro",
-        description: "Ocorreu um erro interno",
+        title: "Erro de Autenticação",
+        description: errorMessage,
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   return (
@@ -92,7 +117,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         <div className="orb"></div>
         <div className="orb"></div>
       </div>
-      
+
       <Card className="w-full max-w-md glass-effect">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
@@ -109,17 +134,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Cadastro</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="login">
               <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Nome</Label>
+                  <Label htmlFor="email">Nome/Email</Label>
                   <Input
-                    id="username"
+                    id="email"
                     type="text"
-                    placeholder="Digite seu nome"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Digite seu nome ou email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="h-12"
                   />
                 </div>
@@ -134,8 +159,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
                     className="h-12"
                   />
                 </div>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full h-12 iota-gradient text-white font-semibold"
                   disabled={isLoading}
                 >
@@ -143,17 +168,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
                 </Button>
               </form>
             </TabsContent>
-            
+
             <TabsContent value="signup">
               <form onSubmit={(e) => handleSubmit(e, true)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-username">Nome</Label>
+                  <Label htmlFor="new-email">Nome/Email</Label>
                   <Input
-                    id="new-username"
+                    id="new-email"
                     type="text"
-                    placeholder="Escolha um nome"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Escolha um nome ou email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="h-12"
                   />
                 </div>
@@ -168,8 +193,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
                     className="h-12"
                   />
                 </div>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full h-12 iota-gradient text-white font-semibold"
                   disabled={isLoading}
                 >
