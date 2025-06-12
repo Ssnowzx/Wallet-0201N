@@ -125,7 +125,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           </div>
           <CardTitle className="text-2xl font-bold">CC Wallet</CardTitle>
           <CardDescription>
-            Sistema de simulação 0201N Tangle (DAG)
+            Sistema de simulação 0102N Tangle (DAG)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -198,7 +198,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
                   className="w-full h-12 iota-gradient text-white font-semibold"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Criando..." : "Criar Conta (+100 tokens 0201N!)"}
+                  {isLoading ? "Criando..." : "Criar Conta (+100 tokens 0102N!)"}
                 </Button>
               </form>
             </TabsContent>

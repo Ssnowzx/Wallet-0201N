@@ -1,8 +1,8 @@
-# CC Wallet - Simulador 0201N Tangle (DAG) 🚀
+# CC Wallet - Simulador 0102N Tangle (DAG) 🚀
 
 ## Visão Geral
 
-CC Wallet é uma aplicação web avançada que simula o funcionamento de uma rede blockchain baseada no conceito Tangle (DAG - Directed Acyclic Graph), similar ao protocolo IOTA, mas usando tokens "0201N". Com as recentes atualizações, a aplicação agora utiliza **Firebase** para gerenciar a autenticação de usuários e persistir os dados da carteira (saldo e histórico de transações). Atualmente, a simulação da rede Tangle global, incluindo a lógica de validação e o pool de transações pendentes, e a visualização 2D ainda operam localmente no frontend, mas a migração dessas funcionalidades para o backend (Firestore) é o próximo grande passo.
+CC Wallet é uma aplicação web avançada que simula o funcionamento de uma rede blockchain baseada no conceito Tangle (DAG - Directed Acyclic Graph), similar ao protocolo IOTA, mas usando tokens "0102N". Com as recentes atualizações, a aplicação agora utiliza **Firebase** para gerenciar a autenticação de usuários e persistir os dados da carteira (saldo e histórico de transações). Atualmente, a simulação da rede Tangle global, incluindo a lógica de validação e o pool de transações pendentes, e a visualização 2D ainda operam localmente no frontend, mas a migração dessas funcionalidades para o backend (Firestore) é o próximo grande passo.
 
 O projeto continua em evolução, com melhorias visuais e funcionais contínuas.
 

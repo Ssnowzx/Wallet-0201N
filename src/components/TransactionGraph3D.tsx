@@ -358,7 +358,7 @@ const TransactionGraph3D: React.FC<TransactionGraph3DProps> = ({ transactions })
           {selectedNodeInfo.type === 'transaction' ? (
             <div className="space-y-1 text-xs">
               <p><strong>ID:</strong> {(selectedNodeInfo.data as Transaction).id.slice(0, 12)}...</p>
-              <p><strong>Valor:</strong> {(selectedNodeInfo.data as Transaction).amount} 0201N</p>
+              <p><strong>Valor:</strong> {(selectedNodeInfo.data as Transaction).amount} 0102N</p>
               <p><strong>Status:</strong> {(selectedNodeInfo.data as Transaction).validated ? 'Validada' : 'Pendente'}</p>
               <p><strong>Valida:</strong> {(selectedNodeInfo.data as Transaction).validates.length} transações</p>
             </div>

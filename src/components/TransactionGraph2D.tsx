@@ -206,7 +206,7 @@ const TransactionGraph2D: React.FC<TransactionGraph2DProps> = ({ transactions })
           <h3 className="text-sm font-semibold mb-2">Detalhes da Transação</h3>
           <div className="space-y-1 text-xs">
             <p><strong>ID:</strong> {(selectedNodeInfo.data as Transaction).id.slice(0, 12)}...</p>
-            <p><strong>Valor:</strong> {(selectedNodeInfo.data as Transaction).amount} 0201N</p>
+            <p><strong>Valor:</strong> {(selectedNodeInfo.data as Transaction).amount} 0102N</p>
             {/* Use isConfirmedForStats in the details display */}
             <p><strong>Status:</strong> {(selectedNodeInfo.data as Transaction).isConfirmedForStats ? '✅ Validada' : '⏳ Pendente'}</p>
             <p><strong>Valida:</strong> {(selectedNodeInfo.data as Transaction).validates.length} transação(ões)</p>

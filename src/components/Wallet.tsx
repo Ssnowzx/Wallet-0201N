@@ -285,7 +285,7 @@ const Wallet: React.FC<WalletProps> = ({ userId, onLogout }) => {
                     </div>
                   )}
                   <Badge variant="secondary" className="text-xs">
-                    0201N Tokens
+                    0102N Tokens
                   </Badge>
                 </div>
 
@@ -327,7 +327,7 @@ const Wallet: React.FC<WalletProps> = ({ userId, onLogout }) => {
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center text-base">
                     <Send className="w-4 h-4 mr-2" />
-                    Enviar 0201N
+                    Enviar 0102N
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -348,7 +348,7 @@ const Wallet: React.FC<WalletProps> = ({ userId, onLogout }) => {
                   {/* Campo Quantidade */}
                   <div className="space-y-1">
                     <Label htmlFor="amount" className="text-xs font-medium">
-                      Quantidade (0201N)
+                      Quantidade (0102N)
                     </Label>
                     <Input
                       id="amount"
@@ -362,7 +362,7 @@ const Wallet: React.FC<WalletProps> = ({ userId, onLogout }) => {
                       className="h-10"
                     />
                     <p className="text-xs text-gray-500">
-                      Máximo: {userInfo.balance.toFixed(2)} 0201N
+                      Máximo: {userInfo.balance.toFixed(2)} 0102N
                     </p>
                   </div>
 
